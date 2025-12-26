@@ -40,8 +40,6 @@ jobs:
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: money_tracker/build/ios/iphoneos/money_tracker.ipa
-          # v1 is hardcoded, run_number changes automatically (e.g., v1.55)
-          tag: v1.${{ github.run_number }}
-          release_name: "Release v1.${{ github.run_number }}"
+          tag: v1.0
           overwrite: true
-          body: "Build number: ${{ github.run_number }}"
+          body: "This is first release"
