@@ -42,14 +42,6 @@ Automated builds are generated for every release. You can download the latest ve
 
 ---
 
-## 📸 Screenshots
-
-| Mobile Home | Add Transaction | Web Dashboard |
-|:---:|:---:|:---:|
-| <img src="" alt="Mobile Home" width="200"/> | <img src="" alt="Add Transaction" width="200"/> | <img src="" alt="Web View" width="200"/> |
-
----
-
 ## 🛠️ Installation (For Developers)
 
 If you want to build and run this project locally:
