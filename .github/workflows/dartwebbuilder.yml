@@ -1,9 +1,9 @@
 name: Deploy Flutter Web
 on:
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 permissions:
-  contents: write # Required to push to the gh-pages branch
+  contents: write
 
 jobs:
   build-and-deploy:
@@ -15,11 +15,16 @@ jobs:
         with:
           channel: 'stable'
 
+      # FIX 1: Enable Web Support
+      - run: flutter config --enable-web
+
+      # FIX 2: Create the missing web/ directory inside your project folder
+      - run: flutter create . --platforms web
+        working-directory: money_tracker
+
       - run: flutter pub get
         working-directory: money_tracker
 
-      # IMPORTANT: We use the repository name as the base-href
-      # If your repo url is github.com/user/my-app, the base-href must be /my-app/
       - name: Build Web
         run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
         working-directory: money_tracker
@@ -28,5 +33,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: money_tracker/build/web # Uploads only the web build folder
-          force_orphan: true # Keeps the history clean (optional)
+          publish_dir: money_tracker/build/web
+          force_orphan: true
