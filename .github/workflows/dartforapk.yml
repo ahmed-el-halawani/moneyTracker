@@ -1,0 +1,46 @@
+name: Android-apk-build
+on:
+  workflow_dispatch:
+
+# Grant write permission to create releases
+permissions:
+  contents: write
+
+jobs:
+  build-android:
+    name: 🤖 Android APK Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Android needs Java installed
+      - uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - run: flutter pub get
+        working-directory: money_tracker
+
+      # Build the APK
+      - run: flutter build apk --release
+        working-directory: money_tracker
+
+      # Rename the output to your project name
+      - name: Rename APK
+        run: mv app-release.apk money_tracker.apk
+        working-directory: money_tracker/build/app/outputs/flutter-apk/
+
+      # Upload to Release
+      - name: Upload APK to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: money_tracker/build/app/outputs/flutter-apk/money_tracker.apk
+          tag: v1.${{ github.run_number }}
+          overwrite: true
+          body: "Android Release - Build ${{ github.run_number }}"
