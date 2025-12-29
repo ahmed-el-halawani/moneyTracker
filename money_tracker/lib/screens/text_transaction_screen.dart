@@ -11,10 +11,12 @@ import '../models/transaction.dart';
 /// Features large textarea with AI parsing and example prompts
 class TextTransactionScreen extends ConsumerStatefulWidget {
   final Transaction? transaction;
+  final String? initialText;
 
   const TextTransactionScreen({
     super.key,
     this.transaction,
+    this.initialText,
   });
 
   @override
@@ -32,11 +34,18 @@ class _TextTransactionScreenState extends ConsumerState<TextTransactionScreen> {
     // Auto-focus the text field when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+      
+      // Auto-process if initial text is provided
+      if (widget.initialText != null && widget.initialText!.isNotEmpty) {
+        _processWithAI();
+      }
     });
     
     // Pre-fill if editing
     if (widget.transaction != null) {
       _textController.text = "Update ${widget.transaction!.title}: ";
+    } else if (widget.initialText != null) {
+      _textController.text = widget.initialText!;
     }
   }
   

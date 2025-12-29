@@ -95,7 +95,11 @@ final appRouter = GoRouter(
       parentNavigatorKey: rootNavigatorKey,
       builder: (context, state) {
         final transaction = state.extra as Transaction?;
-        return TextTransactionScreen(transaction: transaction);
+        final initialText = state.uri.queryParameters['q'];
+        return TextTransactionScreen(
+          transaction: transaction,
+          initialText: initialText,
+        );
       },
     ),
   ],
