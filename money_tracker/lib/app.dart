@@ -11,6 +11,8 @@ class FinancialTrackerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider);
+    // Initialize ShortcutService to listen for Siri commands
+    ref.watch(shortcutServiceProvider);
     
     return MaterialApp.router(
       title: 'Financial Tracker',
