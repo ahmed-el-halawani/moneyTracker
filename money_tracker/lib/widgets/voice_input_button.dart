@@ -9,17 +9,21 @@ class VoiceInputButton extends StatefulWidget {
   final bool isProcessing;
   final double soundLevel;
   final VoidCallback onPressed;
+  final VoidCallback? onLongPressStart;
+  final VoidCallback? onLongPressEnd;
   final double size;
-  
+
   const VoiceInputButton({
     super.key,
     required this.isListening,
     required this.isProcessing,
     required this.soundLevel,
     required this.onPressed,
+    this.onLongPressStart,
+    this.onLongPressEnd,
     this.size = 72,
   });
-  
+
   @override
   State<VoiceInputButton> createState() => _VoiceInputButtonState();
 }
@@ -29,47 +33,49 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
   late AnimationController _pulseController;
   late AnimationController _waveController;
   late Animation<double> _pulseAnimation;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     _pulseController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     _waveController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat();
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    
+
     _pulseController.repeat(reverse: true);
   }
-  
+
   @override
   void dispose() {
     _pulseController.dispose();
     _waveController.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return GestureDetector(
       onTap: widget.onPressed,
+      onLongPressStart: (_) => widget.onLongPressStart?.call(),
+      onLongPressEnd: (_) => widget.onLongPressEnd?.call(),
       child: AnimatedBuilder(
         animation: Listenable.merge([_pulseAnimation, _waveController]),
         builder: (context, child) {
           final scale = widget.isListening ? _pulseAnimation.value : 1.0;
           final waveProgress = _waveController.value;
-          
+
           return SizedBox(
             width: widget.size * 1.6,
             height: widget.size * 1.6,
@@ -116,9 +122,11 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: (widget.isListening 
-                              ? AppColors.error 
-                              : AppColors.primaryLight).withOpacity(0.4),
+                          color:
+                              (widget.isListening
+                                      ? AppColors.error
+                                      : AppColors.primaryLight)
+                                  .withOpacity(0.4),
                           blurRadius: 20,
                           offset: const Offset(0, 8),
                         ),
@@ -135,8 +143,8 @@ class _VoiceInputButtonState extends State<VoiceInputButton>
                               ),
                             )
                           : Icon(
-                              widget.isListening 
-                                  ? LucideIcons.micOff 
+                              widget.isListening
+                                  ? LucideIcons.micOff
                                   : LucideIcons.mic,
                               color: Colors.white,
                               size: 28,
@@ -157,13 +165,13 @@ class _WaveRing extends StatelessWidget {
   final double size;
   final double progress;
   final double opacity;
-  
+
   const _WaveRing({
     required this.size,
     required this.progress,
     required this.opacity,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     return Container(

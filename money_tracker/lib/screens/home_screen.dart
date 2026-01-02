@@ -22,7 +22,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _textController = TextEditingController();
   String _lastTranscription = '';
-  
+
   @override
   void initState() {
     super.initState();
@@ -31,13 +31,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(voiceInputProvider.notifier).initialize();
     });
   }
-  
+
   @override
   void dispose() {
     _textController.dispose();
     super.dispose();
   }
-  
+
   void _syncTranscriptionToTextField(String transcription) {
     // Only update if transcription changed and is not empty
     if (transcription.isNotEmpty && transcription != _lastTranscription) {
@@ -48,7 +48,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
   }
-  
+
   void _handleVoiceButton() {
     final voiceState = ref.read(voiceInputProvider);
     if (voiceState.isListening) {
@@ -60,7 +60,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(voiceInputProvider.notifier).startListening();
     }
   }
-  
+
+  void _startListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (!voiceState.isListening) {
+      _textController.clear();
+      _lastTranscription = '';
+      ref.read(voiceInputProvider.notifier).startListening();
+    }
+  }
+
+  void _stopListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (voiceState.isListening) {
+      ref.read(voiceInputProvider.notifier).stopListening();
+    }
+  }
+
   void _handleTextSubmit() {
     final text = _textController.text.trim();
     if (text.isNotEmpty) {
@@ -69,14 +85,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _lastTranscription = '';
     }
   }
-  
+
   void _confirmPending(String id) async {
     final pending = ref.read(pendingTransactionsProvider);
     final transaction = pending.firstWhere((t) => t.id == id);
-    
+
     await ref.read(transactionsProvider.notifier).add(transaction);
     ref.read(pendingTransactionsProvider.notifier).remove(id);
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -86,11 +102,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
     }
   }
-  
+
   void _deletePending(String id) {
     ref.read(pendingTransactionsProvider.notifier).remove(id);
   }
-  
+
   void _editPending(String id) {
     // TODO: Open edit dialog or screen
     ScaffoldMessenger.of(context).showSnackBar(
@@ -100,12 +116,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final balance = ref.watch(balanceProvider);
     final income = ref.watch(totalIncomeProvider);
     final expenses = ref.watch(totalExpensesProvider);
@@ -113,12 +129,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final recentTransactions = ref.watch(recentTransactionsProvider);
     final pendingTransactions = ref.watch(pendingTransactionsProvider);
     final voiceState = ref.watch(voiceInputProvider);
-    
+
     // Sync transcription to text field when voice input changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncTranscriptionToTextField(voiceState.transcription);
     });
-    
+
     return Scaffold(
       body: Container(
         decoration: Glassmorphism.meshBackground(isDark: isDark),
@@ -143,14 +159,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           'Financial Tracker',
                           style: theme.textTheme.headlineSmall,
                         ),
-                        Text(
-                          _getGreeting(),
-                          style: theme.textTheme.bodySmall,
-                        ),
+                        Text(_getGreeting(), style: theme.textTheme.bodySmall),
                       ],
                     ),
                   ),
-                  
+
                   // Pending Transactions
                   if (pendingTransactions.isNotEmpty) ...[
                     SliverToBoxAdapter(
@@ -158,7 +171,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                         child: Row(
                           children: [
-                            Icon(LucideIcons.clock, size: 20, color: theme.colorScheme.primary),
+                            Icon(
+                              LucideIcons.clock,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Pending Review',
@@ -178,30 +195,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final transaction = pendingTransactions[index];
-                            return PendingTransactionCard(
-                              transaction: transaction,
-                              currencySymbol: currency.symbol,
-                              onConfirm: () => _confirmPending(transaction.id),
-                              onDelete: () => _deletePending(transaction.id),
-                              onEdit: () => _editPending(transaction.id),
-                            );
-                          },
-                          childCount: pendingTransactions.length,
-                        ),
+                        delegate: SliverChildBuilderDelegate((context, index) {
+                          final transaction = pendingTransactions[index];
+                          return PendingTransactionCard(
+                            transaction: transaction,
+                            currencySymbol: currency.symbol,
+                            onConfirm: () => _confirmPending(transaction.id),
+                            onDelete: () => _deletePending(transaction.id),
+                            onEdit: () => _editPending(transaction.id),
+                          );
+                        }, childCount: pendingTransactions.length),
                       ),
                     ),
                   ],
-                  
+
                   // Recent Transactions
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
                       child: Row(
                         children: [
-                          Icon(LucideIcons.history, size: 20, color: theme.colorScheme.primary),
+                          Icon(
+                            LucideIcons.history,
+                            size: 20,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Recent Transactions',
@@ -218,37 +236,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                     ),
                   ),
-                  
+
                   if (recentTransactions.isEmpty)
                     SliverToBoxAdapter(
                       child: EmptyState.noTransactions(
-                        onAddPressed: () => context.push(AppRoutes.addTransaction),
+                        onAddPressed: () =>
+                            context.push(AppRoutes.addTransaction),
                       ),
                     )
                   else
                     SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final transaction = recentTransactions[index];
-                          return TransactionTile(
-                            transaction: transaction,
-                            currencySymbol: currency.symbol,
-                            onDelete: () async {
-                              await ref.read(transactionsProvider.notifier).delete(transaction.id);
-                            },
-                          );
-                        },
-                        childCount: recentTransactions.length,
-                      ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final transaction = recentTransactions[index];
+                        return TransactionTile(
+                          transaction: transaction,
+                          currencySymbol: currency.symbol,
+                          onDelete: () async {
+                            await ref
+                                .read(transactionsProvider.notifier)
+                                .delete(transaction.id);
+                          },
+                        );
+                      }, childCount: recentTransactions.length),
                     ),
-                  
+
                   // Bottom padding for fixed input bar
-                  const SliverToBoxAdapter(
-                    child: SizedBox(height: 200),
-                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 200)),
                 ],
               ),
-              
+
               // Fixed bottom voice input bar
               Positioned(
                 left: 0,
@@ -258,6 +274,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   voiceState: voiceState,
                   textController: _textController,
                   onVoicePressed: _handleVoiceButton,
+                  onVoiceLongPressStart: _startListening,
+                  onVoiceLongPressEnd: _stopListening,
                   onTextSubmit: _handleTextSubmit,
                 ),
               ),
@@ -267,7 +285,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-  
+
   String _getGreeting() {
     final hour = DateTime.now().hour;
     if (hour < 12) return 'Good morning!';
@@ -280,20 +298,24 @@ class _FixedVoiceInputBar extends StatelessWidget {
   final VoiceInputState voiceState;
   final TextEditingController textController;
   final VoidCallback onVoicePressed;
+  final VoidCallback onVoiceLongPressStart;
+  final VoidCallback onVoiceLongPressEnd;
   final VoidCallback onTextSubmit;
-  
+
   const _FixedVoiceInputBar({
     required this.voiceState,
     required this.textController,
     required this.onVoicePressed,
+    required this.onVoiceLongPressStart,
+    required this.onVoiceLongPressEnd,
     required this.onTextSubmit,
   });
-  
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
       decoration: BoxDecoration(
         // Gradient fade at top
@@ -302,7 +324,8 @@ class _FixedVoiceInputBar extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [
             Colors.transparent,
-            (isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F7)).withOpacity(0.8),
+            (isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F7))
+                .withOpacity(0.8),
             isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F7),
           ],
           stops: const [0.0, 0.15, 0.3],
@@ -313,19 +336,19 @@ class _FixedVoiceInputBar extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         decoration: BoxDecoration(
           // Glass card background
-          color: isDark 
+          color: isDark
               ? Colors.white.withOpacity(0.08)
               : Colors.white.withOpacity(0.85),
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
-            color: isDark 
+            color: isDark
                 ? Colors.white.withOpacity(0.12)
                 : Colors.grey.shade200,
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: isDark 
+              color: isDark
                   ? Colors.black.withOpacity(0.3)
                   : Colors.black.withOpacity(0.08),
               blurRadius: 25,
@@ -347,19 +370,19 @@ class _FixedVoiceInputBar extends StatelessWidget {
             AnimatedDefaultTextStyle(
               duration: const Duration(milliseconds: 200),
               style: (theme.textTheme.bodyMedium ?? const TextStyle()).copyWith(
-                color: voiceState.isListening 
+                color: voiceState.isListening
                     ? theme.colorScheme.primary
                     : theme.textTheme.bodySmall?.color,
-                fontWeight: voiceState.isListening 
-                    ? FontWeight.w500 
+                fontWeight: voiceState.isListening
+                    ? FontWeight.w500
                     : FontWeight.normal,
               ),
               child: Text(
                 voiceState.isListening
                     ? 'Listening...'
                     : voiceState.isProcessing
-                        ? 'Processing with AI...'
-                        : 'Tap to speak or type below',
+                    ? 'Processing with AI...'
+                    : 'Tap to speak or type below',
               ),
             ),
             // Show transcription above the button when listening
@@ -367,7 +390,10 @@ class _FixedVoiceInputBar extends StatelessWidget {
               const SizedBox(height: 8),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -399,7 +425,10 @@ class _FixedVoiceInputBar extends StatelessWidget {
             if (voiceState.error != null) ...[
               const SizedBox(height: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.error.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -417,12 +446,12 @@ class _FixedVoiceInputBar extends StatelessWidget {
             // Text input row with enhanced styling
             Container(
               decoration: BoxDecoration(
-                color: isDark 
+                color: isDark
                     ? Colors.white.withOpacity(0.06)
                     : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(
-                  color: isDark 
+                  color: isDark
                       ? Colors.white.withOpacity(0.08)
                       : Colors.grey.shade300,
                 ),
@@ -431,7 +460,7 @@ class _FixedVoiceInputBar extends StatelessWidget {
                 children: [
                   const SizedBox(width: 14),
                   Icon(
-                    LucideIcons.pencil, 
+                    LucideIcons.pencil,
                     size: 18,
                     color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
                   ),
@@ -441,7 +470,9 @@ class _FixedVoiceInputBar extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: 'Or type: "Spent 50 on groceries"',
                         hintStyle: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.5),
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(
+                            0.5,
+                          ),
                         ),
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(
@@ -492,4 +523,3 @@ class _FixedVoiceInputBar extends StatelessWidget {
     );
   }
 }
-

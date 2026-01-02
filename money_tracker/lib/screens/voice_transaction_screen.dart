@@ -13,10 +13,12 @@ class VoiceTransactionScreen extends ConsumerStatefulWidget {
   const VoiceTransactionScreen({super.key});
 
   @override
-  ConsumerState<VoiceTransactionScreen> createState() => _VoiceTransactionScreenState();
+  ConsumerState<VoiceTransactionScreen> createState() =>
+      _VoiceTransactionScreenState();
 }
 
-class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen> {
+class _VoiceTransactionScreenState
+    extends ConsumerState<VoiceTransactionScreen> {
   @override
   void initState() {
     super.initState();
@@ -35,20 +37,36 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
     }
   }
 
+  void _startListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (!voiceState.isListening) {
+      ref.read(voiceInputProvider.notifier).startListening();
+    }
+  }
+
+  void _stopListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (voiceState.isListening) {
+      ref.read(voiceInputProvider.notifier).stopListening();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final voiceState = ref.watch(voiceInputProvider);
     final pendingTransactions = ref.watch(pendingTransactionsProvider);
-    
+
     // Navigate to review screen when transactions are pending
-    if (pendingTransactions.isNotEmpty && !voiceState.isListening && !voiceState.isProcessing) {
+    if (pendingTransactions.isNotEmpty &&
+        !voiceState.isListening &&
+        !voiceState.isProcessing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.pushReplacement(AppRoutes.reviewTransactions);
       });
     }
-    
+
     return Scaffold(
       body: Container(
         decoration: Glassmorphism.meshBackground(isDark: isDark),
@@ -75,7 +93,7 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                   ],
                 ),
               ),
-              
+
               // Main content area
               Expanded(
                 child: Column(
@@ -87,7 +105,7 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                       isProcessing: voiceState.isProcessing,
                     ),
                     const SizedBox(height: 24),
-                    
+
                     // Transcription text
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -95,8 +113,8 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                         voiceState.transcription.isNotEmpty
                             ? '"${voiceState.transcription}"'
                             : voiceState.isListening
-                                ? '"I spent 50 riyals on groceries..."'
-                                : 'Tap to start speaking',
+                            ? '"I spent 50 riyals on groceries..."'
+                            : 'Tap to start speaking',
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: voiceState.transcription.isNotEmpty
@@ -107,7 +125,7 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Hint text
                     Text(
                       voiceState.isListening
@@ -118,17 +136,22 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    
+
                     // Error message
                     if (voiceState.error != null) ...[
                       const SizedBox(height: 16),
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.red.withOpacity(0.2)),
+                          border: Border.all(
+                            color: Colors.red.withOpacity(0.2),
+                          ),
                         ),
                         child: Text(
                           voiceState.error!,
@@ -139,19 +162,21 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                         ),
                       ),
                     ],
-                    
+
                     const SizedBox(height: 48),
-                    
+
                     // Large mic button
                     VoiceMicButton(
                       isListening: voiceState.isListening,
                       isProcessing: voiceState.isProcessing,
                       soundLevel: voiceState.soundLevel,
                       onPressed: _handleMicPressed,
+                      onLongPressStart: _startListening,
+                      onLongPressEnd: _stopListening,
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Tap hint
                     Text(
                       voiceState.isListening
@@ -164,7 +189,7 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
                   ],
                 ),
               ),
-              
+
               // Bottom action - Use Keyboard
               Padding(
                 padding: const EdgeInsets.all(24),
@@ -184,16 +209,13 @@ class _VoiceTransactionScreenState extends ConsumerState<VoiceTransactionScreen>
 class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
-  
-  const _GlassIconButton({
-    required this.icon,
-    required this.onPressed,
-  });
+
+  const _GlassIconButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -203,12 +225,12 @@ class _GlassIconButton extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: isDark 
+            color: isDark
                 ? Colors.white.withOpacity(0.03)
                 : Colors.white.withOpacity(0.7),
             shape: BoxShape.circle,
             border: Border.all(
-              color: isDark 
+              color: isDark
                   ? Colors.white.withOpacity(0.08)
                   : Colors.grey.shade200,
             ),
@@ -224,29 +246,24 @@ class _GlassIconButton extends StatelessWidget {
 class _StatusBadge extends StatelessWidget {
   final bool isListening;
   final bool isProcessing;
-  
-  const _StatusBadge({
-    required this.isListening,
-    required this.isProcessing,
-  });
+
+  const _StatusBadge({required this.isListening, required this.isProcessing});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = theme.colorScheme.primary;
-    
+
     if (!isListening && !isProcessing) {
       return const SizedBox.shrink();
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: primaryColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: primaryColor.withOpacity(0.2),
-        ),
+        border: Border.all(color: primaryColor.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -278,14 +295,14 @@ class _StatusBadge extends StatelessWidget {
 /// Button to toggle to keyboard input
 class _KeyboardToggleButton extends StatelessWidget {
   final VoidCallback onPressed;
-  
+
   const _KeyboardToggleButton({required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: onPressed,
       child: Column(
@@ -295,30 +312,26 @@ class _KeyboardToggleButton extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: isDark 
+              color: isDark
                   ? Colors.white.withOpacity(0.03)
                   : Colors.white.withOpacity(0.7),
               shape: BoxShape.circle,
               border: Border.all(
-                color: isDark 
+                color: isDark
                     ? Colors.white.withOpacity(0.05)
                     : Colors.grey.shade200,
               ),
             ),
             child: Icon(
               LucideIcons.keyboard,
-              color: isDark 
-                  ? Colors.white.withOpacity(0.8)
-                  : Colors.grey[700],
+              color: isDark ? Colors.white.withOpacity(0.8) : Colors.grey[700],
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Use Keyboard',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: isDark 
-                  ? Colors.grey[400] 
-                  : Colors.grey[600],
+              color: isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),
         ],

@@ -162,28 +162,57 @@ final transactionsProvider =
 /// Pending transactions state notifier (for voice input staging)
 class PendingTransactionsNotifier extends Notifier<List<Transaction>> {
   @override
-  List<Transaction> build() => [];
-
-  void add(Transaction transaction) {
-    state = [...state, transaction.copyWith(isPending: true)];
+  List<Transaction> build() {
+    final repository = ref.watch(transactionRepositoryProvider);
+    return repository.getPendingTransactions();
   }
 
-  void addMultiple(List<Transaction> transactions) {
-    state = [...state, ...transactions.map((t) => t.copyWith(isPending: true))];
+  Future<void> add(Transaction transaction) async {
+    final repository = ref.read(transactionRepositoryProvider);
+    // Ensure it's marked as pending
+    final pending = transaction.copyWith(isPending: true);
+    final result = await repository.addTransaction(pending);
+    if (result) {
+      state = repository.getPendingTransactions();
+    }
   }
 
-  void update(String id, Transaction updated) {
-    state = state
-        .map((t) => t.id == id ? updated.copyWith(isPending: true) : t)
+  Future<void> addMultiple(List<Transaction> transactions) async {
+    final repository = ref.read(transactionRepositoryProvider);
+    final pendingList = transactions
+        .map((t) => t.copyWith(isPending: true))
         .toList();
+    final result = await repository.addTransactions(pendingList);
+    if (result) {
+      state = repository.getPendingTransactions();
+    }
   }
 
-  void remove(String id) {
-    state = state.where((t) => t.id != id).toList();
+  Future<void> update(String id, Transaction updated) async {
+    final repository = ref.read(transactionRepositoryProvider);
+    // Keep it pending
+    final pending = updated.copyWith(isPending: true);
+    final result = await repository.updateTransaction(pending);
+    if (result) {
+      state = repository.getPendingTransactions();
+    }
   }
 
-  void clear() {
-    state = [];
+  Future<void> remove(String id) async {
+    final repository = ref.read(transactionRepositoryProvider);
+    final result = await repository.deleteTransaction(id);
+    if (result) {
+      state = repository.getPendingTransactions();
+    }
+  }
+
+  Future<void> clear() async {
+    final repository = ref.read(transactionRepositoryProvider);
+    final ids = state.map((t) => t.id).toList();
+    final result = await repository.deleteTransactions(ids);
+    if (result) {
+      state = [];
+    }
   }
 
   Transaction? getById(String id) {
@@ -202,7 +231,7 @@ final pendingTransactionsProvider =
 final totalIncomeProvider = Provider<double>((ref) {
   final transactions = ref.watch(transactionsProvider);
   return transactions
-      .where((t) => t.type == TransactionType.income)
+      .where((t) => t.isIncrease)
       .fold(0.0, (sum, t) => sum + t.amount);
 });
 
@@ -210,7 +239,7 @@ final totalIncomeProvider = Provider<double>((ref) {
 final totalExpensesProvider = Provider<double>((ref) {
   final transactions = ref.watch(transactionsProvider);
   return transactions
-      .where((t) => t.type == TransactionType.expense)
+      .where((t) => !t.isIncrease)
       .fold(0.0, (sum, t) => sum + t.amount);
 });
 
@@ -224,7 +253,7 @@ final balanceProvider = Provider<double>((ref) {
 /// Spending by category provider
 final spendingByCategoryProvider = Provider<Map<String, double>>((ref) {
   final transactions = ref.watch(transactionsProvider);
-  final expenses = transactions.where((t) => t.type == TransactionType.expense);
+  final expenses = transactions.where((t) => !t.isIncrease);
 
   final Map<String, double> result = {};
   for (final t in expenses) {
@@ -395,7 +424,7 @@ class VoiceInputNotifier extends Notifier<VoiceInputState> {
       );
 
       if (result.success && result.transactions.isNotEmpty) {
-        ref
+        await ref
             .read(pendingTransactionsProvider.notifier)
             .addMultiple(result.transactions);
         state = state.copyWith(

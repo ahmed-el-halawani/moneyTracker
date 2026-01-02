@@ -14,10 +14,12 @@ class ReviewTransactionsScreen extends ConsumerStatefulWidget {
   const ReviewTransactionsScreen({super.key});
 
   @override
-  ConsumerState<ReviewTransactionsScreen> createState() => _ReviewTransactionsScreenState();
+  ConsumerState<ReviewTransactionsScreen> createState() =>
+      _ReviewTransactionsScreenState();
 }
 
-class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScreen> {
+class _ReviewTransactionsScreenState
+    extends ConsumerState<ReviewTransactionsScreen> {
   @override
   void initState() {
     super.initState();
@@ -35,13 +37,29 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
     }
   }
 
+  void _startListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (!voiceState.isListening) {
+      ref.read(voiceInputProvider.notifier).startListening();
+    }
+  }
+
+  void _stopListening() {
+    final voiceState = ref.read(voiceInputProvider);
+    if (voiceState.isListening) {
+      ref.read(voiceInputProvider.notifier).stopListening();
+    }
+  }
+
   Future<void> _acceptAll() async {
     final pending = ref.read(pendingTransactionsProvider);
     for (final t in pending) {
-      await ref.read(transactionsProvider.notifier).add(t.copyWith(isPending: false));
+      await ref
+          .read(transactionsProvider.notifier)
+          .add(t.copyWith(isPending: false));
     }
     ref.read(pendingTransactionsProvider.notifier).clear();
-    
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -60,21 +78,22 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
     final voiceState = ref.watch(voiceInputProvider);
     final pendingTransactions = ref.watch(pendingTransactionsProvider);
     final currency = ref.watch(currencyProvider);
-    
+
     // Go back to voice screen if no pending
-    if (pendingTransactions.isEmpty && !voiceState.isListening && !voiceState.isProcessing) {
+    if (pendingTransactions.isEmpty &&
+        !voiceState.isListening &&
+        !voiceState.isProcessing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         context.pop();
       });
     }
-    
+
     return Scaffold(
       body: Container(
         decoration: Glassmorphism.meshBackground(isDark: isDark),
         child: SafeArea(
           child: Column(
             children: [
-
               // Header
               Padding(
                 padding: const EdgeInsets.all(16),
@@ -91,14 +110,14 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                     _GlassIconButton(
                       icon: LucideIcons.x,
                       onPressed: () {
-                        ref.read(pendingTransactionsProvider.notifier).clear();
+                        // ref.read(pendingTransactionsProvider.notifier).clear();
                         context.pop();
                       },
                     ),
                   ],
                 ),
               ),
-              
+
               // Just Added label
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -123,7 +142,7 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                 ),
               ),
               const SizedBox(height: 12),
-              
+
               // Transaction list
               Expanded(
                 child: ListView.separated(
@@ -136,16 +155,21 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                       transaction: transaction,
                       currencySymbol: currency.symbol,
                       onEdit: () {
-                        context.push(AppRoutes.editTransaction, extra: transaction);
+                        context.push(
+                          AppRoutes.editTransaction,
+                          extra: transaction,
+                        );
                       },
                       onDelete: () {
-                        ref.read(pendingTransactionsProvider.notifier).remove(transaction.id);
+                        ref
+                            .read(pendingTransactionsProvider.notifier)
+                            .remove(transaction.id);
                       },
                     );
                   },
                 ),
               ),
-              
+
               // Bottom section with Accept All and voice input
               Container(
                 padding: const EdgeInsets.all(16),
@@ -154,7 +178,8 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      (isDark ? const Color(0xFF101622) : Colors.white).withOpacity(0),
+                      (isDark ? const Color(0xFF101622) : Colors.white)
+                          .withOpacity(0),
                       isDark ? const Color(0xFF101622) : Colors.white,
                     ],
                   ),
@@ -186,7 +211,10 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                             ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(12),
@@ -204,10 +232,13 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Voice input bar - Clean transparent style
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 8,
+                      ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
@@ -246,8 +277,8 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                                   voiceState.transcription.isNotEmpty
                                       ? '"${voiceState.transcription}"'
                                       : voiceState.isListening
-                                          ? '"Add taxi ride for 25..."'
-                                          : 'Add more transactions',
+                                      ? '"Add taxi ride for 25..."'
+                                      : 'Add more transactions',
                                   style: theme.textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w500,
                                     color: Colors.white,
@@ -260,7 +291,7 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                             ),
                           ),
                           const SizedBox(width: 16),
-                          
+
                           // Right side - Mic and keyboard buttons
                           Row(
                             mainAxisSize: MainAxisSize.min,
@@ -270,7 +301,8 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                                 decoration: BoxDecoration(
                                   boxShadow: [
                                     BoxShadow(
-                                      color: theme.colorScheme.primary.withOpacity(0.4),
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.4),
                                       blurRadius: 20,
                                       spreadRadius: 0,
                                       offset: const Offset(0, 4),
@@ -282,11 +314,13 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                                   isProcessing: voiceState.isProcessing,
                                   soundLevel: voiceState.soundLevel,
                                   onPressed: _handleMicPressed,
+                                  onLongPressStart: _startListening,
+                                  onLongPressEnd: _stopListening,
                                   size: 64,
                                 ),
                               ),
                               const SizedBox(width: 16),
-                              
+
                               // Keyboard button (Circular)
                               Container(
                                 width: 48,
@@ -299,7 +333,8 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
                                   ),
                                 ),
                                 child: IconButton(
-                                  onPressed: () => context.push(AppRoutes.textTransaction),
+                                  onPressed: () =>
+                                      context.push(AppRoutes.textTransaction),
                                   icon: const Icon(
                                     LucideIcons.keyboard,
                                     size: 22,
@@ -328,16 +363,13 @@ class _ReviewTransactionsScreenState extends ConsumerState<ReviewTransactionsScr
 class _GlassIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
-  
-  const _GlassIconButton({
-    required this.icon,
-    required this.onPressed,
-  });
+
+  const _GlassIconButton({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -347,12 +379,12 @@ class _GlassIconButton extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: isDark 
+            color: isDark
                 ? Colors.white.withOpacity(0.03)
                 : Colors.white.withOpacity(0.7),
             shape: BoxShape.circle,
             border: Border.all(
-              color: isDark 
+              color: isDark
                   ? Colors.white.withOpacity(0.08)
                   : Colors.grey.shade200,
             ),

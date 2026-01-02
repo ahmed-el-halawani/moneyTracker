@@ -161,28 +161,42 @@ Input Language: The text uses Arabic or English.
 CRITICAL RULES:
 1. Return ONLY valid JSON. No markdown, no explanations.
 2. If the user mentions multiple distinct expenses (e.g., "50 for food and 20 for taxi"), you MUST return multiple objects in the array.
-3. Detect "Social Splits" (e.g., "I paid 300 for lunch with Khaled"):
+3. TRANSACTION TYPES:
+   - "income": Salary, profit, or general money increase (not from a specific person).
+   - "expense": Checking, food, shopping, or general money decrease (not to a specific person).
+   - "transfer_out": Money LEAVING your possession to a specific person.
+     * Keywords: "Sent to", "Gave to", "Transfer to", "I gave".
+     * Example: "I gave Mohamed 50" -> type: "transfer_out", beneficiary: "Mohamed".
+   - "transfer_in": Money ENTERING your possession from a specific person.
+     * Keywords: "Received from", "Gave me", "Transfer from", "He gave me".
+     * Example: "Mohamed gave me 50" -> type: "transfer_in", beneficiary: "Mohamed".
+4. Detect "Social Splits" (e.g., "I paid 300 for lunch with Khaled"):
    - If a single amount is shared, use the 'split_with' field.
    - Do NOT create separate transactions for the split parts unless explicitly asked.
-4. LANGUAGE REQUIREMENT: Translate 'title' and 'description' to $targetLanguage.
+5. LANGUAGE REQUIREMENT: Translate 'title' and 'description' to $targetLanguage.
 
 Schema for each object:
 {
   "title": "string (Short header in $targetLanguage)",
   "description": "string (Details in $targetLanguage)",
   "amount": number,
-  "type": "income" | "expense",
-  "category": "Food" | "Transport" | "Shopping" | "Entertainment" | "Bills" | "Salary" | "Healthcare" | "Education" | "Investment" | "Gifts" | "Other",
+  "type": "income" | "expense" | "transfer_out" | "transfer_in",
+  "category": "Food" | "Transport" | "Shopping" | "Entertainment" | "Bills" | "Salary" | "Healthcare" | "Education" | "Investment" | "Gifts" | "Other" | "string",
+  "is_increase": boolean (true if money is ENTERING my account, false if money is LEAVING),
+  "emoji": "string" (A single relevant emoji, e.g. 🍔, 💰, 🚕),
   "split_with": ["string"] (Optional),
-  "beneficiary": "string" (Optional)
+  "beneficiary": "string" (Optional, Name of the person for transfers)
 }
 
 Examples:
-Input: "I spent 50 on food and 20 on taxi"
-Output: [{"title":"Food","amount":50...}, {"title":"Taxi","amount":20...}]
+Input: "I spent 50 on food"
+Output: [{"title":"Food","amount":50,"type":"expense","is_increase":false,"emoji":"🍔"...}]
 
-Input: "Dinner 300 riyals with Khaled"
-Output: [{"title":"Dinner","amount":300,"split_with":["Khaled"]...}]
+Input: "I gave Mohamed 50"
+Output: [{"title":"Transfer to Mohamed","amount":50,"type":"transfer_out","is_increase":false,"emoji":"↗️","beneficiary":"Mohamed"...}]
+
+Input: "Mohamed gave me 50"
+Output: [{"title":"Received from Mohamed","amount":50,"type":"transfer_in","is_increase":true,"emoji":"↙️","beneficiary":"Mohamed"...}]
 
 Text to Parse: "$text"''';
   }
