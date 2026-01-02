@@ -29,9 +29,9 @@ class ShortcutService {
 
   Future<void> _handleSiriText(String text) async {
     try {
-      final aiService = container.read(aiServiceProvider);
-      // We use the existing addTransaction method which parses natural language
-      await aiService.addTransaction(text);
+      final notifier = container.read(voiceInputProvider.notifier);
+      // Use the notifier to parse and add the transaction
+      await notifier.processText(text);
       
       // Optionally, we could trigger a UI refresh or navigation here if the app is open
       // The provider update in addTransaction should already trigger UI updates

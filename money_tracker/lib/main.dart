@@ -9,7 +9,16 @@ void main() async {
   
   // Initialize SharedPreferences
   final prefs = await SharedPreferences.getInstance();
-  
+
+  // Initialize Supabase (TODO: Replace with actual keys)
+  // const supabaseUrl = 'YOUR_SUPABASE_URL';
+  // const supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+  // 
+  // await Supabase.initialize(
+  //   url: supabaseUrl,
+  //   anonKey: supabaseAnonKey,
+  // );
+
   runApp(
     ProviderScope(
       overrides: [
