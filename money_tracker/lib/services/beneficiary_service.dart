@@ -35,20 +35,29 @@ final beneficiaryRepositoryProvider = Provider<BeneficiaryRepository>((ref) {
 
 class BeneficiaryRepository {
   final SupabaseService _supabase;
-  
+
   // Local cache for offline support or quick access
-  final List<Beneficiary> _cache = []; 
+  final List<Beneficiary> _cache = [];
 
   BeneficiaryRepository(this._supabase);
 
   // Resolution Logic: Smart Name Matching
-  Future<Beneficiary?> resolveBeneficiary(String inputName, {String? contextNote}) async {
+  Future<Beneficiary?> resolveBeneficiary(
+    String inputName, {
+    String? contextNote,
+  }) async {
     // 1. Precise Mock Handling (Until Supabase is fully live)
     // If input is "Neighbor" and we have a "Neighbor" in context, find "Khaled"
-    if (inputName.toLowerCase().contains('neighbor') || 
-       (contextNote != null && contextNote.toLowerCase().contains('neighbor'))) {
-       // Mock resolving "Neighbor" -> "Khaled"
-       return Beneficiary(id: 'mock-1', name: 'Khaled', note: 'My Neighbor', usageCount: 5);
+    if (inputName.toLowerCase().contains('neighbor') ||
+        (contextNote != null &&
+            contextNote.toLowerCase().contains('neighbor'))) {
+      // Mock resolving "Neighbor" -> "Khaled"
+      return Beneficiary(
+        id: 'mock-1',
+        name: 'Khaled',
+        note: 'My Neighbor',
+        usageCount: 5,
+      );
     }
 
     try {
@@ -61,7 +70,7 @@ class BeneficiaryRepository {
     } catch (e) {
       // Supabase likely not init, ignore
     }
-    
+
     // 3. Return a temporary/new beneficiary object if not found
     return null;
   }

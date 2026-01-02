@@ -6,6 +6,7 @@ import '../services/audio_recording_service.dart';
 
 import '../repositories/transaction_repository.dart';
 import '../repositories/settings_repository.dart';
+import '../repositories/contact_repository.dart';
 import '../models/transaction.dart';
 import '../models/user_settings.dart';
 import '../models/category.dart';
@@ -25,6 +26,12 @@ final storageServiceProvider = Provider<StorageService>((ref) {
 final transactionRepositoryProvider = Provider<TransactionRepository>((ref) {
   final storage = ref.watch(storageServiceProvider);
   return TransactionRepository(storage);
+});
+
+/// Contact repository provider
+final contactRepositoryProvider = Provider<ContactRepository>((ref) {
+  final storage = ref.watch(storageServiceProvider);
+  return ContactRepository(storage);
 });
 
 /// Settings repository provider
@@ -424,9 +431,14 @@ class VoiceInputNotifier extends Notifier<VoiceInputState> {
       );
 
       if (result.success && result.transactions.isNotEmpty) {
+        // Attach voice history to new transactions
+        final transactionsWithHistory = result.transactions.map((t) {
+          return t.copyWith(voiceHistory: [text]);
+        }).toList();
+
         await ref
             .read(pendingTransactionsProvider.notifier)
-            .addMultiple(result.transactions);
+            .addMultiple(transactionsWithHistory);
         state = state.copyWith(
           isProcessing: false,
           // transaction processed successfully

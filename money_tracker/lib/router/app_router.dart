@@ -7,6 +7,7 @@ import '../screens/settings_screen.dart';
 import '../screens/voice_transaction_screen.dart';
 import '../screens/review_transactions_screen.dart';
 import '../screens/text_transaction_screen.dart';
+import '../screens/review_split_screen.dart';
 import '../widgets/app_shell.dart';
 import '../models/transaction.dart';
 
@@ -20,6 +21,7 @@ class AppRoutes {
   static const String editTransaction = '/edit';
   static const String voiceTransaction = '/voice';
   static const String reviewTransactions = '/review';
+  static const String reviewSplit = '/review-split';
   static const String textTransaction = '/text';
   static const String settings = '/settings';
 }
@@ -41,23 +43,20 @@ final appRouter = GoRouter(
         GoRoute(
           path: AppRoutes.home,
           name: 'home',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: HomeScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: HomeScreen()),
         ),
         GoRoute(
           path: AppRoutes.transactions,
           name: 'transactions',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: TransactionsScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: TransactionsScreen()),
         ),
         GoRoute(
           path: AppRoutes.settings,
           name: 'settings',
-          pageBuilder: (context, state) => const NoTransitionPage(
-            child: SettingsScreen(),
-          ),
+          pageBuilder: (context, state) =>
+              const NoTransitionPage(child: SettingsScreen()),
         ),
       ],
     ),
@@ -88,6 +87,15 @@ final appRouter = GoRouter(
       name: 'reviewTransactions',
       parentNavigatorKey: rootNavigatorKey,
       builder: (context, state) => const ReviewTransactionsScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.reviewSplit,
+      name: 'reviewSplit',
+      parentNavigatorKey: rootNavigatorKey,
+      builder: (context, state) {
+        final transaction = state.extra as Transaction;
+        return ReviewSplitScreen(transaction: transaction);
+      },
     ),
     GoRoute(
       path: AppRoutes.textTransaction,

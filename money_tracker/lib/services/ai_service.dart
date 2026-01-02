@@ -70,11 +70,12 @@ class AIService {
   /// Modify an existing transaction based on instruction
   Future<Transaction?> modifyTransaction(
     Transaction current,
-    String instruction,
-  ) async {
+    String instruction, {
+    List<String> history = const [],
+  }) async {
     if (instruction.trim().isEmpty) return current;
 
-    final prompt = _buildModifyPrompt(current, instruction);
+    final prompt = _buildModifyPrompt(current, instruction, history);
 
     try {
       final response = await _callGroq(prompt);
@@ -171,8 +172,11 @@ CRITICAL RULES:
      * Keywords: "Received from", "Gave me", "Transfer from", "He gave me".
      * Example: "Mohamed gave me 50" -> type: "transfer_in", beneficiary: "Mohamed".
 4. Detect "Social Splits" (e.g., "I paid 300 for lunch with Khaled"):
-   - If a single amount is shared, use the 'split_with' field.
-   - Do NOT create separate transactions for the split parts unless explicitly asked.
+   - You MUST identify the distinct participants.
+   - If user says "I paid...", include the user as a participant (is_current_user: true).
+   - If the user says "Split 300... I pay 100", use the specific amounts.
+   - If no amounts specified, assume user wants the app to calculate equal split (you can return 0 or calculate it yourself).
+   - "note" field should capture context like "neighbor" or "lived next door" to help identifying the user.
 5. LANGUAGE REQUIREMENT: Translate 'title' and 'description' to $targetLanguage.
 
 Schema for each object:
@@ -184,7 +188,15 @@ Schema for each object:
   "category": "Food" | "Transport" | "Shopping" | "Entertainment" | "Bills" | "Salary" | "Healthcare" | "Education" | "Investment" | "Gifts" | "Other" | "string",
   "is_increase": boolean (true if money is ENTERING my account, false if money is LEAVING),
   "emoji": "string" (A single relevant emoji, e.g. 🍔, 💰, 🚕),
-  "split_with": ["string"] (Optional),
+  "split_members": [
+    {
+      "name": "string",
+      "amount": number,
+      "is_current_user": boolean,
+      "is_payer": boolean (true if this person PAID the bill. Default false. Only ONE person can be payer),
+      "note": "string (optional)"
+    }
+  ] (Optional, only if split),
   "beneficiary": "string" (Optional, Name of the person for transfers)
 }
 
@@ -198,16 +210,59 @@ Output: [{"title":"Transfer to Mohamed","amount":50,"type":"transfer_out","is_in
 Input: "Mohamed gave me 50"
 Output: [{"title":"Received from Mohamed","amount":50,"type":"transfer_in","is_increase":true,"emoji":"↙️","beneficiary":"Mohamed"...}]
 
+Input: "I paid 300 for lunch with Ali and Mohamed next door"
+Output: [{
+  "title": "Lunch Split",
+  "amount": 300,
+  "type": "expense",
+  "is_increase": false,
+  "emoji": "🍕",
+  "split_members": [
+    {"name": "Me", "amount": 100, "is_current_user": true, "is_payer": true},
+    {"name": "Ali", "amount": 100, "is_current_user": false, "is_payer": false},
+    {"name": "Mohamed", "amount": 100, "is_current_user": false, "is_payer": false, "note": "next door"}
+  ]
+}]
+
+Input: "Ali paid 200 for dinner with me"
+Output: [{
+  "title": "Dinner Split",
+  "amount": 200,
+  "type": "expense",
+  "is_increase": false,
+  "emoji": "🍽️",
+  "split_members": [
+     {"name": "Me", "amount": 100, "is_current_user": true, "is_payer": false},
+     {"name": "Ali", "amount": 100, "is_current_user": false, "is_payer": true}
+  ]
+}]
+
 Text to Parse: "$text"''';
   }
 
-  String _buildModifyPrompt(Transaction current, String instruction) {
+  String _buildModifyPrompt(
+    Transaction current,
+    String instruction,
+    List<String> history,
+  ) {
+    final historyBlock = history.isNotEmpty
+        ? '\nPrevious Voice Commands:\n${history.map((h) => "- $h").join("\n")}\n'
+        : '';
+
     return '''You are a financial assistant. Update the transaction JSON based on the user's instruction.
-    
+
 Current JSON:
 ${json.encode(current.toJson())}
 
+$historyBlock
 Instruction: "$instruction"
+
+CRITICAL RULES:
+1. Return the COMPLETE updated JSON object.
+2. PRESERVE all existing fields (id, createdAt, split_members, etc.) unless explicitly asked to change them.
+3. If modifying a split participant (e.g. "Make Ali pay 50"), find "Ali" in "split_members", update their amount, and RECALCULATE other shares if needed to match total.
+4. DO NOT DELETE any existing split members unless asked to "remove" them.
+5. PRESERVE hidden fields like "email", "phone", "note" inside split_members.
 
 Return ONLY the updated JSON object. No markdown.''';
   }

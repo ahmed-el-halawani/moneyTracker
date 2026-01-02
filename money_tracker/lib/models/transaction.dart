@@ -38,6 +38,61 @@ enum TransactionType {
   }
 }
 
+/// Split payment member
+class SplitMember {
+  final String name;
+  final double amount;
+  final bool isCurrentUser;
+  final bool isPayer;
+  final String? note; // Contextual note like "lived next door"
+  final String? email;
+  final String? phone;
+
+  SplitMember({
+    required this.name,
+    required this.amount,
+    this.isCurrentUser = false,
+    this.isPayer = false,
+    this.note,
+    this.email,
+    this.phone,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'amount': amount,
+      'isCurrentUser': isCurrentUser,
+      'isPayer': isPayer,
+      'note': note,
+      'email': email,
+      'phone': phone,
+    };
+  }
+
+  factory SplitMember.fromJson(Map<String, dynamic> json) {
+    return SplitMember(
+      name: json['name'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      isCurrentUser: json['isCurrentUser'] as bool? ?? false,
+      isPayer: json['isPayer'] as bool? ?? false,
+      note: json['note'] as String?,
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+    );
+  }
+
+  /// Helper to check if member is resolved (has contact info or is me)
+  bool get isResolved =>
+      isCurrentUser ||
+      (email != null && email!.isNotEmpty) ||
+      (phone != null && phone!.isNotEmpty);
+
+  @override
+  String toString() =>
+      'SplitMember(name: $name, amount: $amount, isMe: $isCurrentUser, resolved: $isResolved)';
+}
+
 /// Transaction model
 class Transaction {
   final String id;
@@ -50,6 +105,8 @@ class Transaction {
   final bool isPending;
   final bool isIncrease;
   final String? emoji;
+  final List<SplitMember>? splitMembers;
+  final List<String> voiceHistory;
 
   Transaction({
     String? id,
@@ -62,12 +119,15 @@ class Transaction {
     this.isPending = false,
     bool? isIncrease,
     this.emoji,
+    this.splitMembers,
+    List<String>? voiceHistory,
   }) : id = id ?? const Uuid().v4(),
        createdAt = createdAt ?? DateTime.now(),
        isIncrease =
            isIncrease ??
            (type == TransactionType.income ||
-               type == TransactionType.transferIn);
+               type == TransactionType.transferIn),
+       voiceHistory = voiceHistory ?? [];
 
   /// Create a copy with updated fields
   Transaction copyWith({
@@ -81,6 +141,8 @@ class Transaction {
     bool? isPending,
     bool? isIncrease,
     String? emoji,
+    List<SplitMember>? splitMembers,
+    List<String>? voiceHistory,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -93,6 +155,8 @@ class Transaction {
       isPending: isPending ?? this.isPending,
       isIncrease: isIncrease ?? this.isIncrease,
       emoji: emoji ?? this.emoji,
+      splitMembers: splitMembers ?? this.splitMembers,
+      voiceHistory: voiceHistory ?? this.voiceHistory,
     );
   }
 
@@ -109,6 +173,8 @@ class Transaction {
       'isPending': isPending,
       'isIncrease': isIncrease,
       'emoji': emoji,
+      'splitMembers': splitMembers?.map((e) => e.toJson()).toList(),
+      'voiceHistory': voiceHistory,
     };
   }
 
@@ -125,21 +191,44 @@ class Transaction {
       isPending: json['isPending'] as bool? ?? false,
       isIncrease: json['isIncrease'] as bool?,
       emoji: json['emoji'] as String?,
+      splitMembers: (json['splitMembers'] as List<dynamic>?)
+          ?.map((e) => SplitMember.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      voiceHistory: (json['voiceHistory'] as List<dynamic>?)
+          ?.map((e) => e.toString())
+          .toList(),
     );
   }
 
   /// Create from AI parsed response
   factory Transaction.fromAIResponse(Map<String, dynamic> json) {
-    return Transaction(
+    final t = Transaction(
       title: json['title'] as String? ?? 'Untitled',
       description: json['description'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       type: TransactionType.fromString(json['type'] as String? ?? 'expense'),
       category: json['category'] as String? ?? 'Other',
       isPending: true,
-      isIncrease: json['is_increase'] as bool?, // Parse snake_case from AI
+      isIncrease: json['is_increase'] as bool?,
       emoji: json['emoji'] as String?,
+      // Handle both snake_case (AI Prompt) and camelCase (Modify Input) keys
+      splitMembers:
+          ((json['split_members'] ?? json['splitMembers']) as List<dynamic>?)
+              ?.map(
+                (e) => SplitMember(
+                  name: e['name'],
+                  amount: (e['amount'] as num).toDouble(),
+                  isCurrentUser:
+                      e['is_current_user'] ?? e['isCurrentUser'] ?? false,
+                  isPayer: e['is_payer'] ?? e['isPayer'] ?? false,
+                  note: e['note'],
+                  email: e['email'],
+                  phone: e['phone'],
+                ),
+              )
+              .toList(),
     );
+    return t;
   }
 
   @override
@@ -153,6 +242,6 @@ class Transaction {
 
   @override
   String toString() {
-    return 'Transaction(id: $id, title: $title, amount: $amount, type: ${type.name}, isIncrease: $isIncrease, emoji: $emoji)';
+    return 'Transaction(id: $id, title: $title, amount: $amount, type: ${type.name}, isIncrease: $isIncrease, splitMembers: $splitMembers)';
   }
 }

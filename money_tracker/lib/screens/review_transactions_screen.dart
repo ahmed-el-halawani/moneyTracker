@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons/lucide_icons.dart';
+import '../models/transaction.dart';
 import '../providers/providers.dart';
 import '../widgets/glass_transaction_card.dart';
 import '../widgets/voice_mic_button.dart';
@@ -88,6 +89,38 @@ class _ReviewTransactionsScreenState
       });
     }
 
+    // Auto-navigate to split edit screen when a new split transaction is added
+    ref.listen<List<Transaction>>(pendingTransactionsProvider, (
+      previous,
+      next,
+    ) {
+      if (previous == null) return;
+
+      // Find new transactions that weren't in the previous list
+      final previousIds = previous.map((t) => t.id).toSet();
+      final newTransactions = next
+          .where((t) => !previousIds.contains(t.id))
+          .toList();
+
+      if (newTransactions.isNotEmpty) {
+        // Check if any of the new transactions is a split
+        final splitTransaction = newTransactions.firstWhere(
+          (t) => t.splitMembers != null && t.splitMembers!.isNotEmpty,
+          orElse: () => newTransactions.first,
+        );
+
+        if (splitTransaction.splitMembers != null &&
+            splitTransaction.splitMembers!.isNotEmpty) {
+          // Navigate to split review
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              context.push(AppRoutes.reviewSplit, extra: splitTransaction);
+            }
+          });
+        }
+      }
+    });
+
     return Scaffold(
       body: Container(
         decoration: Glassmorphism.meshBackground(isDark: isDark),
@@ -155,10 +188,20 @@ class _ReviewTransactionsScreenState
                       transaction: transaction,
                       currencySymbol: currency.symbol,
                       onEdit: () {
-                        context.push(
-                          AppRoutes.editTransaction,
-                          extra: transaction,
-                        );
+                        final hasSplit =
+                            transaction.splitMembers != null &&
+                            transaction.splitMembers!.isNotEmpty;
+                        if (hasSplit) {
+                          context.push(
+                            AppRoutes.reviewSplit,
+                            extra: transaction,
+                          );
+                        } else {
+                          context.push(
+                            AppRoutes.editTransaction,
+                            extra: transaction,
+                          );
+                        }
                       },
                       onDelete: () {
                         ref

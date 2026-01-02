@@ -10,6 +10,7 @@ import '../widgets/transaction_tile.dart';
 import '../widgets/pending_transaction_card.dart';
 import '../widgets/voice_input_button.dart';
 import '../widgets/empty_state.dart';
+import 'review_split_screen.dart';
 
 /// Home screen with dashboard
 class HomeScreen extends ConsumerStatefulWidget {
@@ -108,13 +109,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _editPending(String id) {
-    // TODO: Open edit dialog or screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Edit feature coming soon!'),
-        behavior: SnackBarBehavior.floating,
-      ),
+    final pending = ref.read(pendingTransactionsProvider);
+    final transaction = pending.firstWhere(
+      (t) => t.id == id,
+      orElse: () => throw Exception('Transaction not found'),
     );
+
+    if (transaction.splitMembers != null &&
+        transaction.splitMembers!.isNotEmpty) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ReviewSplitScreen(transaction: transaction),
+        ),
+      );
+    } else {
+      context.push(AppRoutes.editTransaction, extra: transaction);
+    }
   }
 
   @override
@@ -133,6 +144,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Sync transcription to text field when voice input changes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _syncTranscriptionToTextField(voiceState.transcription);
+    });
+
+    // Auto-navigate to ReviewSplitScreen if voice input creates a split transaction
+    ref.listen(voiceInputProvider, (previous, next) {
+      if (previous?.isProcessing == true &&
+          !next.isProcessing &&
+          next.error == null) {
+        final pending = ref.read(pendingTransactionsProvider);
+        if (pending.isNotEmpty) {
+          // Assume the latest is pertinent.
+          // Ideally we should match ID or timestamp, but this suffices for the flow.
+          final latest = pending.first;
+          if (latest.splitMembers != null && latest.splitMembers!.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ReviewSplitScreen(transaction: latest),
+              ),
+            );
+          }
+        }
+      }
     });
 
     return Scaffold(
