@@ -18,8 +18,8 @@ dependencies:
   ollama: ^1.0.4
   ollama_dart: ^0.3.0+1
   path_provider: ^2.1.5
+  record: ^6.1.2
   shared_preferences: ^2.5.4
-  speech_to_text: ^7.3.0
   supabase_flutter: ^2.12.0
   uuid: ^4.5.2
 

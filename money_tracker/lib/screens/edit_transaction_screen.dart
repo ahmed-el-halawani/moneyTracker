@@ -11,13 +11,11 @@ import '../widgets/glass_transaction_card.dart';
 class EditTransactionScreen extends ConsumerStatefulWidget {
   final Transaction transaction;
 
-  const EditTransactionScreen({
-    super.key,
-    required this.transaction,
-  });
+  const EditTransactionScreen({super.key, required this.transaction});
 
   @override
-  ConsumerState<EditTransactionScreen> createState() => _EditTransactionScreenState();
+  ConsumerState<EditTransactionScreen> createState() =>
+      _EditTransactionScreenState();
 }
 
 class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
@@ -28,43 +26,20 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
   void initState() {
     super.initState();
     _draftTransaction = widget.transaction;
-    
+
     // Initialize voice input when entering the screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(voiceInputProvider.notifier).initialize();
     });
   }
 
-  Future<void> _handleVoiceResult() async {
-    final voiceState = ref.read(voiceInputProvider);
-    if (voiceState.transcription.isNotEmpty) {
-      final notifier = ref.read(voiceInputProvider.notifier);
-      
-      // Update the DRAFT, not the original
-      final updated = await notifier.processUpdate(
-        voiceState.transcription, 
-        _draftTransaction, 
-      );
-      
-      if (updated != null && mounted) {
-        setState(() {
-          _draftTransaction = updated;
-          _hasChanges = true;
-        });
-        
-        // Clear transcription after successful update so user can speak again for more changes
-        notifier.clearTranscription();
-      }
-    }
-  }
-
   Future<void> _switchToKeyboard() async {
     // Pass the DRAFT to text screen
     final result = await context.push<Transaction>(
-      AppRoutes.textTransaction, 
+      AppRoutes.textTransaction,
       extra: _draftTransaction,
     );
-    
+
     // If text screen returns a transaction (simulated save), update draft
     if (result != null && mounted) {
       setState(() {
@@ -73,17 +48,16 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
       });
     }
   }
-  
+
   void _saveChanges() async {
     if (_draftTransaction.isPending) {
-      ref.read(pendingTransactionsProvider.notifier).update(
-        _draftTransaction.id, 
-        _draftTransaction
-      );
+      ref
+          .read(pendingTransactionsProvider.notifier)
+          .update(_draftTransaction.id, _draftTransaction);
     } else {
       await ref.read(transactionsProvider.notifier).update(_draftTransaction);
     }
-    
+
     if (mounted) {
       context.pop();
     }
@@ -94,7 +68,7 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
     final theme = Theme.of(context);
     final voiceState = ref.watch(voiceInputProvider);
     final isListening = voiceState.isListening;
-    
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A), // Dark blue background
       body: Stack(
@@ -117,13 +91,16 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
               ),
             ),
           ),
-          
+
           SafeArea(
             child: Column(
               children: [
                 // Header - Centered Title
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 12.0,
+                  ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
@@ -148,121 +125,85 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                               color: Colors.white.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.x, color: Colors.white, size: 20),
+                            child: const Icon(
+                              LucideIcons.x,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 24),
-                
-                // Transaction Context Card - Updated with _draftTransaction
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF161F32), // Slightly lighter than bg
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: _hasChanges 
-                            ? const Color(0xFF3B82F6).withValues(alpha: 0.5) 
-                            : Colors.white.withValues(alpha: 0.08),
-                        width: _hasChanges ? 2 : 1,
+
+                // Transaction Context Card - Diff View
+                if (_hasChanges) ...[
+                  // Original Transaction (Dimmed)
+                  Opacity(
+                    opacity: 0.6,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: GlassTransactionCard(
+                        transaction: widget.transaction,
+                        currencySymbol: 'SAR', // Should fetch from settings
                       ),
-                      boxShadow: _hasChanges ? [
-                        BoxShadow(
-                          color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ) 
-                      ] : [],
-                    ),
-                    child: Row(
-                      children: [
-                        // Icon Box
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _draftTransaction.title.isNotEmpty 
-                                  ? _draftTransaction.title[0].toUpperCase() 
-                                  : 'T',
-                              style: const TextStyle(
-                                color: Colors.red, // Netflix Red example color
-                                fontWeight: FontWeight.bold,
-                                fontSize: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        
-                        // Details
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _draftTransaction.title,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Text(
-                                    _draftTransaction.category + ' • ',
-                                    style: TextStyle(
-                                      color: Colors.grey[400],
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Oct 24', // Static date for now
-                                    style: TextStyle(
-                                      color: Colors.grey[400],
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // Amount
-                        Text(
-                          '\$${_draftTransaction.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
-                ),
-                
+
+                  // Arrow Indicator
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: Icon(
+                      LucideIcons.arrowDown,
+                      color: const Color(0xFF3B82F6),
+                      size: 32,
+                    ),
+                  ),
+
+                  // New Proposed Transaction (Highlighted)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF3B82F6,
+                            ).withValues(alpha: 0.2),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: GlassTransactionCard(
+                        transaction: _draftTransaction,
+                        currencySymbol: 'SAR',
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // Single Card View (No changes yet)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: GlassTransactionCard(
+                      transaction: widget.transaction,
+                      currencySymbol: 'SAR',
+                    ),
+                  ),
+                ],
+
                 const Spacer(flex: 2),
-                
+
                 // Listening Badge
                 if (isListening || voiceState.isProcessing)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B).withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(24),
@@ -294,9 +235,9 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                       ],
                     ),
                   ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Main Voice Heading (or Confirm actions if changes made and not listening)
                 if (_hasChanges && !isListening && !voiceState.isProcessing)
                   Column(
@@ -317,27 +258,50 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                           // Reject Button
                           TextButton.icon(
                             onPressed: () {
-                               setState(() {
-                                 _draftTransaction = widget.transaction;
-                                 _hasChanges = false;
-                               });
+                              setState(() {
+                                _draftTransaction = widget.transaction;
+                                _hasChanges = false;
+                              });
                             },
-                            icon: const Icon(LucideIcons.undo, color: Colors.white70),
-                            label: const Text('Reset', style: TextStyle(color: Colors.white70)),
+                            icon: const Icon(
+                              LucideIcons.undo,
+                              color: Colors.white70,
+                            ),
+                            label: const Text(
+                              'Reset',
+                              style: TextStyle(color: Colors.white70),
+                            ),
                             style: TextButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(alpha: 0.1),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.1,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 16),
                           // Accept Button
                           ElevatedButton.icon(
                             onPressed: _saveChanges,
-                            icon: const Icon(LucideIcons.check, color: Colors.white),
-                            label: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            icon: const Icon(
+                              LucideIcons.check,
+                              color: Colors.white,
+                            ),
+                            label: const Text(
+                              'Save',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF3B82F6),
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -373,44 +337,64 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                         ),
                     ],
                   ),
-                
+
                 const Spacer(flex: 1),
-                
+
                 // Mic and Keyboard Controls
                 // Hide if we are showing confirmation buttons? No, user might want to edit more.
-                // But having two primary actions is confusing. 
+                // But having two primary actions is confusing.
                 // Let's keep Mic accessible to refine further.
-                
                 Column(
                   children: [
                     VoiceMicButton(
                       size: 90,
                       isListening: isListening,
                       isProcessing: voiceState.isProcessing,
-                      onPressed: () {
-                         if (isListening) {
-                            ref.read(voiceInputProvider.notifier).stopListening(autoProcess: false);
-                            _handleVoiceResult();
-                          } else {
-                            ref.read(voiceInputProvider.notifier).startListening(autoProcess: false);
+                      onPressed: () async {
+                        if (isListening) {
+                          // Stop listening and get the file path (don't auto-process as NEW transaction)
+                          final path = await ref
+                              .read(voiceInputProvider.notifier)
+                              .stopListening(autoProcess: false);
+
+                          if (path != null) {
+                            // Process as EDIT update
+                            final notifier = ref.read(
+                              voiceInputProvider.notifier,
+                            );
+                            final updated = await notifier.processEditAudio(
+                              path,
+                              _draftTransaction,
+                            );
+
+                            if (updated != null && mounted) {
+                              setState(() {
+                                _draftTransaction = updated;
+                                _hasChanges = true;
+                              });
+                              // Clear transcription to ready for next
+                              notifier.clearTranscription();
+                            }
                           }
+                        } else {
+                          ref
+                              .read(voiceInputProvider.notifier)
+                              .startListening(autoProcess: false);
+                        }
                       },
                     ),
                     const SizedBox(height: 16),
                     Text(
                       isListening ? 'Tap microphone to stop' : 'Tap to speak',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
                     ),
                   ],
                 ),
-                
+
                 const Spacer(flex: 1),
-                
+
                 // Keyboard Button
-                 Column(
+                Column(
                   children: [
                     IconButton(
                       onPressed: _switchToKeyboard,
@@ -422,20 +406,20 @@ class _EditTransactionScreenState extends ConsumerState<EditTransactionScreen> {
                           color: Colors.white.withValues(alpha: 0.05),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(LucideIcons.keyboard, color: Colors.white),
+                        child: const Icon(
+                          LucideIcons.keyboard,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'Use Keyboard',
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.grey[500], fontSize: 14),
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 32),
               ],
             ),

@@ -45,6 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to the microphone to record your voice for transaction entry.</string>
 	<key>FlutterDeepLinkingEnabled</key>
 	<true/>
 	<key>CFBundleURLTypes</key>
